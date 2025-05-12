@@ -4,7 +4,9 @@ import com.example.ResumeParser.entity.User;
 import com.example.ResumeParser.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.example.ResumeParser.dto.ForgotPasswordRequest;
 
+@CrossOrigin(origins = "*") // Or restrict to frontend URL
 @RestController
 @RequestMapping("/api/auth")
 //@CrossOrigin(origins = "*")  // Enable CORS for frontend connection
@@ -24,6 +26,15 @@ public class AuthController {
     public User loginUser(@RequestBody LoginRequest loginRequest) {
         return userService.loginUser(loginRequest.getUsernameOrEmail(), loginRequest.getPassword());
     }
+@CrossOrigin(origins = "*")  // Allow all origins (for testing)
+@PostMapping("/forgot-password")
+public String forgotPassword(@RequestBody ForgotPasswordRequest request) {
+    userService.resetPassword(request.getEmail(), request.getNewPassword());
+    return "Password updated successfully";
+}
+
+
+
 
     // DTO for Login Request
     public static class LoginRequest {

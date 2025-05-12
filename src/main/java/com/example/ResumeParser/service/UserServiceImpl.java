@@ -1,12 +1,13 @@
 package com.example.ResumeParser.service;
 
-import com.example.ResumeParser.entity.User;
-import com.example.ResumeParser.repository.UserRepository;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import com.example.ResumeParser.entity.User;
+import com.example.ResumeParser.repository.UserRepository;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -34,4 +35,17 @@ public class UserServiceImpl implements UserService {
         }
         throw new RuntimeException("Invalid username/email or password");
     }
+  @Override
+public void resetPassword(String email, String newPassword) {
+    Optional<User> optionalUser = userRepository.findByEmail(email);
+    if (optionalUser.isPresent()) {
+        User user = optionalUser.get();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    } else {
+        throw new RuntimeException("User with email " + email + " not found");
+    }
+}
+
+
 }
