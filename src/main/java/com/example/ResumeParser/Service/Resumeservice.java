@@ -23,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -291,8 +292,14 @@ public Resume uploadResumeForUser(Long userId,MultipartFile file) throws Excepti
     String[] lines = text.split("\n");
 
     String email = extractRegex(text, "[\\w\\.-]+@[\\w\\.-]+", "Email not found");
-    String phone = extractRegex(text, "(\\+?\\d{1,3}[-.\\s]?)?(\\(?\\d{1,4}\\)?[-.\\s]?){1,5}\\d{1,4}", "Phone not found");
-    double experience = extractExperienceYears(text);
+  String phone = extractRegex(text,
+    "(\\+\\d{1,3}[\\s-]?)?" +           // Optional country code +1, +91, etc.
+    "(\\(\\d{1,4}\\)[\\s-]?)?" +        // Optional area code with parentheses
+    "([\\d\\s-]{5,15}\\d)",              // Main number with 5-15 digits including spaces/dashes
+    "Phone not found"
+);
+
+    double experience = extractExperienceYears(text, lines);
     // String skills = extractSkills(lowerText);
     List<String> skillsList = extractSkills(text);
     //         // Find the user by ID
@@ -456,38 +463,72 @@ private String extractRegex(String text, String regex, String defaultValue) {
     return matcher.find() ? matcher.group() : defaultValue;
 }
 
-private double extractExperienceYears(String text) {
-    String[] lines = text.split("\n");
-    List<String> experienceKeywords = Arrays.asList("experience", "work experience", "professional experience");
+ private double extractExperienceYears(String text, String[] lines) {
+        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+        double totalYears = 0.0;
 
-    Pattern pattern = Pattern.compile("(\\d+)\\s*(years|year|yrs|yr)?\\s*(and)?\\s*(\\d+)?\\s*(months|month|mos|mo)?", Pattern.CASE_INSENSITIVE);
+        List<String> experienceHeaders = Arrays.asList("work experience", "professional experience", "experience");
+        List<String> stopHeaders = Arrays.asList(
+                "education", "certification", "certifications", "training", "skills",
+                "projects", "summary", "objective", "awards", "languages", "volunteer", "references"
+        );
 
-    for (int i = 0; i < lines.length; i++) {
-        String lineLower = lines[i].toLowerCase();
-        boolean containsKeyword = experienceKeywords.stream().anyMatch(lineLower::contains);
+        Pattern rangePattern = Pattern.compile(
+            "(\\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)?\\s*\\d{4})\\s*[-–—]\\s*(present|ongoing|\\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)?\\s*\\d{4})",
+            Pattern.CASE_INSENSITIVE
+        );
 
-        if (containsKeyword) {
-            Matcher matcher = pattern.matcher(lineLower);
-            if (matcher.find()) {
-                int years = matcher.group(1) != null ? Integer.parseInt(matcher.group(1)) : 0;
-                int months = matcher.group(4) != null ? Integer.parseInt(matcher.group(4)) : 0;
-                return years + (months / 12.0);
+        boolean inExperienceSection = false;
+
+        for (String line : lines) {
+            String lowerLine = line.toLowerCase().trim();
+
+            if (!inExperienceSection && experienceHeaders.stream().anyMatch(lowerLine::contains)) {
+                inExperienceSection = true;
+                continue;
             }
 
-            if (i + 1 < lines.length) {
-                String nextLine = lines[i + 1].toLowerCase();
-                Matcher matcherNext = pattern.matcher(nextLine);
-                if (matcherNext.find()) {
-                    int years = matcherNext.group(1) != null ? Integer.parseInt(matcherNext.group(1)) : 0;
-                    int months = matcherNext.group(4) != null ? Integer.parseInt(matcherNext.group(4)) : 0;
-                    return years + (months / 12.0);
+            if (inExperienceSection && stopHeaders.stream().anyMatch(lowerLine::contains)) {
+                break;
+            }
+
+            if (inExperienceSection) {
+                Matcher matcher = rangePattern.matcher(lowerLine);
+                while (matcher.find()) {
+                    String start = matcher.group(1).trim();
+                    String end = matcher.group(2).trim();
+
+                    int startYear = extractYear(start, currentYear);
+                    int endYear = (end.equalsIgnoreCase("present") || end.equalsIgnoreCase("ongoing"))
+                            ? currentYear
+                            : extractYear(end, currentYear);
+
+                    if (startYear > 1900 && startYear <= endYear && endYear <= currentYear + 1) {
+                        totalYears += (endYear - startYear);
+                    }
                 }
             }
         }
+
+        return totalYears;
     }
 
-    return 0;
-}
+    private int extractYear(String text, int currentYear) {
+        text = text.toLowerCase().replaceAll("[^a-z0-9\\s]", "").trim();
+        String[] parts = text.split("\\s+");
+
+        try {
+            if (parts.length == 2) {
+                return Integer.parseInt(parts[1]);
+            } else if (parts.length == 1) {
+                return Integer.parseInt(parts[0]);
+            }
+        } catch (NumberFormatException ignored) {
+        }
+
+        return currentYear;
+    }
+
 
 // private String extractSkills(String lowerText) {
 //     Set<String> foundSkills = new HashSet<>();
