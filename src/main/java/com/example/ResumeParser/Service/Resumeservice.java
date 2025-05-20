@@ -349,6 +349,11 @@ public Resume uploadResumeForUser(Long userId,MultipartFile file) throws Excepti
 
     return resumeRepository.save(resume);
 }
+public Resume getResumeById(Long resumeId) {
+    return resumeRepository.findById(resumeId)
+            .orElse(null);
+}
+
 
 
 

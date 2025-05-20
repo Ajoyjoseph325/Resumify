@@ -9,9 +9,16 @@ import com.example.ResumeParser.dto.Resumefilterrequest;
 import com.example.ResumeParser.dto.SkillFilterRequest;
 import com.example.ResumeParser.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.UrlResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -94,6 +101,26 @@ public ResponseEntity<?> deleteUserResumes(@PathVariable Long userId) {
     resumeservice.deleteResumesByUserId(userId);
     return ResponseEntity.ok("User's resumes deleted successfully");
 }
+@GetMapping("/resumes/view/{resumeId}")
+public ResponseEntity<Resource> viewResume(@PathVariable Long resumeId) throws IOException {
+    Resume resume = resumeservice.getResumeById(resumeId);
+    if (resume == null) {
+        return ResponseEntity.notFound().build();
+    }
+
+    Path file = Paths.get(resume.getFilePath());
+    Resource resource = new UrlResource(file.toUri());
+
+    if (!resource.exists()) {
+        return ResponseEntity.notFound().build();
+    }
+
+    return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resume.getFileName() + "\"")
+            .body(resource);
+}
+
 
 
 

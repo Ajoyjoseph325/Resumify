@@ -23,7 +23,8 @@ public class Resume {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    private String filePath;
+    private String fileName;
     private String name;
     private String email;
     private String phoneNumber;
@@ -111,5 +112,17 @@ public class Resume {
     public void removeSkill(Skill skill) {
         this.skills.remove(skill);
         skill.getResumes().remove(this);
+    }
+    public String getFilePath() {
+        return filePath;
+    }
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
+    public String getFileName() {
+        if (this.filePath != null) {
+            return new java.io.File(this.filePath).getName();
+        }
+        return fileName;
     }
 }
