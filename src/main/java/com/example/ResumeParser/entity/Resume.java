@@ -28,6 +28,16 @@ public class Resume {
     private String email;
     private String phoneNumber;
     private double yearsOfExperience;
+    private String fileName;
+
+public String getFileName() {
+    return fileName;
+}
+
+public void setFileName(String fileName) {
+    this.fileName = fileName;
+}
+
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
