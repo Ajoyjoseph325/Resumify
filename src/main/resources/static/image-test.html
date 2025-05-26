@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Resume Image Viewer</title>
+</head>
+<body>
+    <h1>Resume Image Viewer</h1>
+
+    <label for="resumeId">Enter Resume ID:</label>
+    <input type="number" id="resumeId" value="1" min="1">
+    <button onclick="loadImage()">Load Resume Image</button>
+
+    <div id="imageContainer" style="margin-top: 20px;">
+        <img id="resumeImage" src="" alt="Resume Image" style="max-width: 100%; border: 1px solid #ccc;" />
+    </div>
+
+    <script>
+        function loadImage() {
+            const resumeId = document.getElementById("resumeId").value;
+            const imageElement = document.getElementById("resumeImage");
+
+            imageElement.src = `/api/resumes/image/${resumeId}`;
+        }
+    </script>
+</body>
+</html>
