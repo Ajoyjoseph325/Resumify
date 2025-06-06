@@ -3,14 +3,13 @@ package com.example.ResumeParser.repository;
 import com.example.ResumeParser.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import java.util.Optional;  // Add this import
 
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findById(Long id);  
-
-    // Removed findById as it is already inherited from JpaRepository
-    Optional<User> findByEmail(String email); // Needed for login
-        
+    // findById is inherited, no need to redeclare
+    
+    Optional<User> findByEmail(String email); // keep this for login stuff
+   
 }

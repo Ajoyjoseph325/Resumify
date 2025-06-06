@@ -8,15 +8,22 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Skill {
+@Table(name = "domain_experience")
+public class DomainExperience {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "skill", columnDefinition = "TEXT")
+    private String skill;
 
-    private String skillName;
+    @Column(name = "job_title")
+    private String jobTitle;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @Column(name = "years")
+    private Double years;
+
+    @ManyToOne
     @JoinColumn(name = "resume_id")
     private Resume resume;
 }
