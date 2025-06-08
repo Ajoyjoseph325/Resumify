@@ -2,14 +2,20 @@ package com.example.ResumeParser.Controller;
 
 import com.example.ResumeParser.Service.ResumeService;
 import com.example.ResumeParser.dto.ResumeSkillsDTO;
+import com.example.ResumeParser.entity.Resume;
 import com.example.ResumeParser.repository.Resumerepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+
 
 @RestController
 @CrossOrigin(origins = "http://localhost:4200")
@@ -20,6 +26,8 @@ public class ResumeController {
     public ResumeController(ResumeService resumeService) {
         this.resumeService = resumeService;
     }
+    @Autowired
+    GeminiModelController controller;
 
     @Autowired
     private Resumerepository resumeRepository;
@@ -101,4 +109,23 @@ public ResponseEntity<List<ResumeSkillsDTO>> getResumesBySkillsAndUserId(
             return ResponseEntity.status(403).body(ex.getMessage());
         }
     }
+    // Function to show the image of the resume
+   @GetMapping("/image/{resumeId}")
+public ResponseEntity<Resource> getResumeImage(@PathVariable Long resumeId) {
+    Optional<Resume> optionalResume = resumeRepository.findById(resumeId);
+
+    if (optionalResume.isEmpty() || optionalResume.get().getResumeImage() == null) {
+        return ResponseEntity.notFound().build();
+    }
+
+    Resume resume = optionalResume.get();
+    byte[] imageData = resume.getResumeImage();
+    ByteArrayResource resource = new ByteArrayResource(imageData);
+
+    return ResponseEntity.ok()
+            .contentLength(imageData.length)
+            .contentType(MediaType.IMAGE_PNG) // Adjust if necessary
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"resume_" + resumeId + ".png\"")
+            .body(resource);
+}
 }

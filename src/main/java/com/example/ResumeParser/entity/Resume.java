@@ -21,7 +21,11 @@ public class Resume {
     private String email;
     private String phone;
     private double totalExperienceYears;
-    
+
+    @Lob
+    @Column(name = "resume_image", columnDefinition = "LONGBLOB")
+    private byte[] resumeImage;
+
     @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Skill> skills = new ArrayList<>();
 

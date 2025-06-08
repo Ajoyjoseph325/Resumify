@@ -8,6 +8,9 @@ import com.example.ResumeParser.repository.Resumerepository;
 import com.example.ResumeParser.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.tika.Tika;
 import org.apache.tika.exception.TikaException;
 import org.slf4j.Logger;
@@ -23,9 +26,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
+
 import reactor.core.publisher.Mono;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -66,12 +74,18 @@ public class GeminiModelController {
         User user = userOpt.get();
 
         String extractedText;
-        try {
+        byte[] imageBytes;
+        try (InputStream is = file.getInputStream(); PDDocument document = PDDocument.load(is)) {
+            // Extract text with Tika
             extractedText = extractTextFromPdfWithTika(file);
+
+            // Generate preview image from first page
+            imageBytes = renderFirstPageToImage(document);
+
         } catch (IOException | TikaException e) {
-            log.error("Error extracting text from PDF", e);
+            log.error("Error processing PDF file", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Failed to extract text from PDF: " + e.getMessage()));
+                    .body(Map.of("error", "Failed to process PDF file: " + e.getMessage()));
         }
 
         String prompt = buildPrompt() + "\n\n--- PDF Content ---\n" + extractedText;
@@ -92,7 +106,7 @@ public class GeminiModelController {
                 .bodyToMono(String.class);
 
         try {
-            String responseBody = responseMono.block(); // blocking here for demo - switch to reactive in prod
+            String responseBody = responseMono.block(); // blocking here for demo - use reactive in prod
 
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(responseBody);
@@ -123,7 +137,7 @@ public class GeminiModelController {
             }
 
             Map<String, Object> cleanJson = mapper.readValue(jsonText, Map.class);
-            Resume resume = mapToResume(cleanJson, user);
+            Resume resume = mapToResume(cleanJson, user, imageBytes);
             Resume saved = resumeRepository.save(resume);
 
             return ResponseEntity.ok(Map.of("message", "Resume saved", "id", saved.getId()));
@@ -145,9 +159,12 @@ public class GeminiModelController {
         }
     }
 
-    private Resume mapToResume(Map<String, Object> json, User user) {
+    // Updated mapToResume accepts the image bytes
+    private Resume mapToResume(Map<String, Object> json, User user, byte[] imageBytes) {
         Resume resume = new Resume();
+
         resume.setUser(user);
+        resume.setResumeImage(imageBytes);
 
         // Defensive casts with null checks
         resume.setName((String) json.getOrDefault("name", null));
@@ -156,35 +173,51 @@ public class GeminiModelController {
 
         Object expYearsObj = json.get("experience_years");
         if (expYearsObj != null) {
-            resume.setTotalExperienceYears(Double.valueOf(expYearsObj.toString()));
+            try {
+                resume.setTotalExperienceYears(Double.valueOf(expYearsObj.toString()));
+            } catch (NumberFormatException e) {
+                log.warn("Invalid experience_years format: {}", expYearsObj);
+            }
         }
 
         // Skills parsing
-        List<String> skillsList = (List<String>) json.get("skills");
-        if (skillsList != null) {
-            List<Skill> skills = skillsList.stream().map(s -> {
-                Skill skill = new Skill();
-                skill.setSkillName(s);
-                skill.setResume(resume);
-                return skill;
-            }).collect(Collectors.toList());
+        Object skillsObj = json.get("skills");
+        if (skillsObj instanceof List<?>) {
+            List<?> skillsList = (List<?>) skillsObj;
+            List<Skill> skills = skillsList.stream()
+                    .filter(s -> s instanceof String)
+                    .map(s -> {
+                        Skill skill = new Skill();
+                        skill.setSkillName((String) s);
+                        skill.setResume(resume);
+                        return skill;
+                    }).collect(Collectors.toList());
             resume.setSkills(skills);
         }
 
         // Experience parsing
-        List<Map<String, Object>> expList = (List<Map<String, Object>>) json.get("experience");
-        if (expList != null) {
-            List<DomainExperience> experience = expList.stream().map(exp -> {
-                DomainExperience d = new DomainExperience();
-                d.setJobTitle((String) exp.get("title"));
-                d.setSkill((String) exp.get("specializationskills"));
-                Object durObj = exp.get("duration_years");
-                if (durObj != null) {
-                    d.setYears(Double.valueOf(durObj.toString()));
-                }
-                d.setResume(resume);
-                return d;
-            }).collect(Collectors.toList());
+        Object expObj = json.get("experience");
+        if (expObj instanceof List<?>) {
+            List<?> expList = (List<?>) expObj;
+            List<DomainExperience> experience = expList.stream()
+                    .filter(e -> e instanceof Map)
+                    .map(e -> {
+                        Map<?, ?> expMap = (Map<?, ?>) e;
+                        DomainExperience d = new DomainExperience();
+                        d.setJobTitle((String) expMap.get("title"));
+                        d.setSkill((String) expMap.get("specializationskills"));
+
+                        Object durObj = expMap.get("duration_years");
+                        if (durObj != null) {
+                            try {
+                                d.setYears(Double.valueOf(durObj.toString()));
+                            } catch (NumberFormatException ex) {
+                                log.warn("Invalid duration_years format: {}", durObj);
+                            }
+                        }
+                        d.setResume(resume);
+                        return d;
+                    }).collect(Collectors.toList());
             resume.setExperiences(experience);
         }
 
@@ -192,8 +225,19 @@ public class GeminiModelController {
     }
 
     private String extractTextFromPdfWithTika(MultipartFile file) throws IOException, TikaException {
-        Tika tika = new Tika();
-        return tika.parseToString(file.getInputStream());
+        try (InputStream is = file.getInputStream()) {
+            Tika tika = new Tika();
+            return tika.parseToString(is);
+        }
+    }
+
+    private byte[] renderFirstPageToImage(PDDocument document) throws IOException {
+        PDFRenderer pdfRenderer = new PDFRenderer(document);
+        BufferedImage image = pdfRenderer.renderImageWithDPI(0, 300);
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ImageIO.write(image, "png", baos);
+            return baos.toByteArray();
+        }
     }
 
     private String buildPrompt() {
