@@ -29,7 +29,6 @@ public class User {
     private String password;
    
 
-
     private String validationCode;
     public Long getId() {
     return id;

@@ -12,7 +12,7 @@ import com.example.ResumeParser.Service.VerificationCode;
 import com.example.ResumeParser.entity.User;
 
 @RestController
-@RequestMapping("api/setCode")
+@RequestMapping("api/auth/setCode")
 @CrossOrigin(origins = "http://localhost:4200")
 public class VerificationCodeController {
      @Autowired

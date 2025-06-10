@@ -12,14 +12,14 @@ import com.example.ResumeParser.Service.VeridicationEmail;
 import com.example.ResumeParser.entity.User;
 
 @RestController
-@RequestMapping("api/setEmail")
+@RequestMapping("api/auth/setEmail")
 @CrossOrigin(origins = "http://localhost:4200")
 public class VerificationEmailController {
     @Autowired
     public VeridicationEmail verificationEmail;
     
 
-     @PostMapping("")
+    @PostMapping("")
     public ResponseEntity<String> getEmail(@RequestBody User userEmail) {
         return verificationEmail.getEmail(userEmail);  
     }

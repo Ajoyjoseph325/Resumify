@@ -8,6 +8,8 @@ public class ResumeParserApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(ResumeParserApplication.class, args);
+		
+
 	}
 
 }

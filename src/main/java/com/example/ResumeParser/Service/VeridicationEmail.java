@@ -24,19 +24,17 @@ public class VeridicationEmail {
         Optional<User> existEmail = forgotRepo.findByEmail(userEmail.getEmail());
 
         if (existEmail.isPresent()) {
-            User existingverif = existEmail.get();
-            String code = existingverif.getValidationCode();
+            User existingUser = existEmail.get();
 
-            // Generate and set a new code if not present
-            if (code !=null) {
-                code = genCode.AutogenerateCode(); // Custom method to generate code
-                existingverif.setValidationCode(code);
-                forgotRepo.save(existingverif);
-            }
+            // Always generate a new code (or control this with config/expiry if needed)
+            String code = genCode.AutogenerateCode();
+            existingUser.setValidationCode(code);
+            forgotRepo.save(existingUser); // 📝 Save the updated user with new code
 
-            // Send email
+            // 📧 Send email
             emailService.sendVerificationEmail(userEmail.getEmail(), code);
-            System.out.println("Verification code: " + code);
+            System.out.println("📨 Verification code: " + code);
+
             return ResponseEntity.ok("Verification code sent to " + userEmail.getEmail());
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Email not found.");
