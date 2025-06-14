@@ -8,11 +8,11 @@ import com.example.ResumeParser.entity.Resume;
 import com.example.ResumeParser.repository.Resumerepository;
 
 @Service
-public class ResumeService {
+public class Resumeservice {
 
     private final Resumerepository resumeRepository;
 
-    public ResumeService(Resumerepository resumeRepository) {
+    public Resumeservice(Resumerepository resumeRepository) {
         this.resumeRepository = resumeRepository;
     }
 

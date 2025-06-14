@@ -1,6 +1,5 @@
 package com.example.ResumeParser.Controller;
-
-import com.example.ResumeParser.Service.ResumeService;
+import com.example.ResumeParser.Service.Resumeservice;
 import com.example.ResumeParser.dto.ResumeSkillsDTO;
 import com.example.ResumeParser.entity.Resume;
 import com.example.ResumeParser.repository.Resumerepository;
@@ -20,10 +19,10 @@ import java.util.Optional;
 @RestController
 @CrossOrigin(origins = "http://localhost:4200")
 @RequestMapping("/resumes")
-public class ResumeController {
-    private final ResumeService resumeService;
+public class Resumecontroller {
+    private final Resumeservice resumeService;
 
-    public ResumeController(ResumeService resumeService) {
+    public Resumecontroller(Resumeservice resumeService) {
         this.resumeService = resumeService;
     }
     @Autowired
