@@ -1,19 +1,27 @@
 package com.example.ResumeParser.Controller;
 import com.example.ResumeParser.Service.Resumeservice;
+import com.example.ResumeParser.dto.PreviewDTO;
 import com.example.ResumeParser.dto.ResumeSkillsDTO;
+import com.example.ResumeParser.entity.Preview;
 import com.example.ResumeParser.entity.Resume;
+import com.example.ResumeParser.repository.PreviewRepository;
 import com.example.ResumeParser.repository.Resumerepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.PrimitiveIterator;
 
 
 @RestController
@@ -30,6 +38,9 @@ public class Resumecontroller {
 
     @Autowired
     private Resumerepository resumeRepository;
+
+    @Autowired 
+    private PreviewRepository previewRepository;
 
    @GetMapping("/resumesByUserId/{userId}")
 public ResponseEntity<List<ResumeSkillsDTO>> getResumesByUserId(@PathVariable Long userId) {
@@ -126,5 +137,50 @@ public ResponseEntity<Resource> getResumeImage(@PathVariable Long resumeId) {
             .contentType(MediaType.IMAGE_PNG) // Adjust if necessary
             .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"resume_" + resumeId + ".png\"")
             .body(resource);
+}
+@GetMapping("/user/{userId}/preview/{previewId}")
+public ResponseEntity<?> getPreviewDetails(@PathVariable Long userId,
+                                           @PathVariable Long previewId) {
+    Optional<Preview> previewOpt = previewRepository.findById(previewId);
+
+    if (previewOpt.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "Preview not found with id: " + previewId));
+    }
+
+    Preview preview = previewOpt.get();
+
+    if (preview.getUser() == null || !Objects.equals(preview.getUser().getId(), userId)) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "This preview does not belong to user: " + userId));
+    }
+
+    // Generate dynamic image URL
+    String imageUrl = preview.getResume() != null
+            ? "http://localhost:8080/resumes/image/" + preview.getResume().getId()
+            : null;
+
+    PreviewDTO dto = PreviewDTO.builder()
+            .previewId(preview.getId())
+            .userId(preview.getUser().getId())
+            .resumeId(preview.getResume() != null ? preview.getResume().getId() : null)
+            .name(preview.getName())
+            .email(preview.getEmail())
+            .phone(preview.getPhone())
+            .profileSummary(preview.getProfileSummary())
+            .description(preview.getDescription())
+            .linkedin(preview.getLinkedin())
+            .github(preview.getGithub())
+            .overallScore(preview.getOverallScore())
+            .jobFit(preview.getJobFit())
+            .specializedJob(preview.getSpecializedJob())
+            .jobPosition(preview.getJobPosition())
+            .imageUrl(imageUrl)
+            .skills(preview.getSkills())
+            .education(preview.getEducation())
+            .experience(preview.getExperience())
+            .build();
+
+    return ResponseEntity.ok(dto);
 }
 }
