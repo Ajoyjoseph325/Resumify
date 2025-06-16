@@ -176,6 +176,7 @@ public ResponseEntity<?> getPreviewDetails(@PathVariable Long userId,
             .specializedJob(preview.getSpecializedJob())
             .jobPosition(preview.getJobPosition())
             .imageUrl(imageUrl)
+
             .skills(preview.getSkills())
             .education(preview.getEducation())
             .experience(preview.getExperience())
